@@ -26,30 +26,13 @@
 
 
 // var tessel = require('tessel');
-// var ambientlib = require('ambient-attx4');
 
-// var ambient = ambientlib.use(tessel.port['A']);
 // var servolib = require('servo-pca9685');
 
 // var servo = servolib.use(tessel.port['B']);
 
 // var servo1 = 1; // We have a servo plugged in at position 1
 // var servo2 = 2;
-
-// ambient.on('ready', function () {
-
-//  // Set a sound level trigger
-//   // The trigger is a float between 0 and 1
-//   ambient.setSoundTrigger(0.075);
-
-//  console.log('Waiting for a loud sound...');
-
-//  ambient.on('sound-trigger', function (data) {
-//     console.log('Something happened with sound: ', data);
-//     // servo.move(1, 0.05);
-//     // servo.move(2, 0.05);
-// servo.on('ready', function () {
-//   var position = 0.05;  //  Target position of the servo between 0 (min) and 1 (max).
 
 //   servo.configure(servo1, 0.05, 1, function () {
 //     servo.move(1, 0.15)
@@ -78,13 +61,57 @@
 /////////////
 var tessel = require('tessel');
 var servolib = require('servo-pca9685');
+const av = require('tessel-av');
+const http = require('http');
+var ambientlib = require('ambient-attx4');
+var ambient = ambientlib.use(tessel.port['A']);
+
+const portNumber = 3210;
+const camera = new av.Camera();
+const takePicture = camera.capture();
 
 var servo = servolib.use(tessel.port['B']);
 
 var servo1 = 1; // We have a servo plugged in at position 1
 
 servo.on('ready', function () {
-  var position = 0;  //  Target position of the servo between 0 (min) and 1 (max).
+  var position = 0;  //  Target position of the servo between 0 (min) and 1 (max)
+
+ambient.on('ready', function () {
+
+  // Set a sound level trigger
+  // The trigger is a float between 0 and 1
+  ambient.setSoundTrigger(0.075);
+
+  console.log('Waiting for a loud sound...');
+
+  ambient.on('sound-trigger', function (data) {
+    console.log('Something happened with sound: ', data);
+
+    takePicture.on('data', (image) => {
+      console.log('taking picture');
+
+      const request = http.request({
+        hostname: '172.16.22.212', // veekas's IP address
+        port: portNumber,
+        path: '/pic',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'image/jpg',
+          'Content-Length': image.length
+        }
+      });
+
+      request.write(image);
+
+    });
+
+    takePicture.on('error', (err) => console.error(err));
+
+    // servo.move(1, 0.05);
+    // servo.move(2, 0.05);
+    servo.on('ready', function () {
+      var position = 0.05;  //  Target position of the servo between 0 (min) and 1 (max).
 
   //  Set the minimum and maximum duty cycle for servo 1.
   //  If the servo doesn't move to its full extent or stalls out
@@ -107,7 +134,7 @@ servo.on('ready', function () {
     // servo.move(servo1, position)
     // console.log("moved 3")
     // }, 10000)
-    
+
              // Increment by 10% (~18 deg for a normal servo)
       // position += 0;
       // if (position > 0.7) {
